@@ -4,6 +4,7 @@ export type CommentItem = {
   time: string;
   content: string;
   likes: string;
+  dislikes: string;
 };
 
 export type CommunityItem = {
@@ -22,9 +23,10 @@ export type PostItem = {
   title: string;
   body: string;
   votes: string;
+  downvotes: string;
   commentsCount: number;
   time: string;
-  category: string;
+
   readTime: string;
   comments: CommentItem[];
 };
@@ -76,9 +78,10 @@ export const feedItems: PostItem[] = [
     title: "بتای خصوصی را در ۲ هفته منتشر کردیم؛ این هم مسیر ورود کاربر.",
     body: "با کاهش مراحل شروع از ۶ به ۳ صفحه، کاربران اولیه ۳۲٪ سریع تر ثبت نام را کامل کردند.",
     votes: "۱.۳هزار",
+    downvotes: "۴۳",
     commentsCount: 214,
-    time: "۴س",
-    category: "مطالعه موردی",
+    time: "۴ ساعت",
+
     readTime: "۵ دقیقه مطالعه",
     comments: [
       {
@@ -87,6 +90,7 @@ export const feedItems: PostItem[] = [
         time: "۳س",
         content: "جالب بود. کدام مرحله بیشترین ریزش را کم کرد؟",
         likes: "۳۲",
+        dislikes: "۳",
       },
       {
         id: 102,
@@ -94,6 +98,7 @@ export const feedItems: PostItem[] = [
         time: "۲س",
         content: "اگر اسکرین های قبل و بعد را هم بگذارید عالی می شود.",
         likes: "۱۸",
+        dislikes: "۱",
       },
     ],
   },
@@ -105,9 +110,10 @@ export const feedItems: PostItem[] = [
     title: "قبل از معرفی MVP در Product Hunt، چک لیست شما چیست؟",
     body: "آنالیتیکس، احراز هویت و پرداخت آماده است. شما قبل از روز لانچ چه بررسی های UX انجام می دهید؟",
     votes: "۸۹۲",
+    downvotes: "۲۱",
     commentsCount: 146,
-    time: "۷س",
-    category: "پرسش",
+    time: "۷ ساعت",
+
     readTime: "۳ دقیقه مطالعه",
     comments: [
       {
@@ -116,6 +122,7 @@ export const feedItems: PostItem[] = [
         time: "۶س",
         content: "حتما روی موبایل و اینترنت ضعیف تست نهایی انجام بده.",
         likes: "۵۴",
+        dislikes: "۵",
       },
       {
         id: 202,
@@ -123,6 +130,7 @@ export const feedItems: PostItem[] = [
         time: "۵س",
         content: "ایونت های قیف ثبت نام را دوباره چک کن؛ خیلی حیاتی هستند.",
         likes: "۲۷",
+        dislikes: "۴",
       },
     ],
   },
@@ -134,9 +142,10 @@ export const feedItems: PostItem[] = [
     title: "درخواست بازخورد: سلسله مراتب کارت ها برای موبایل واضح است؟",
     body: "در حال تست یک لیست فشرده تر هستم تا بدون شلوغی بصری، اطلاعات بیشتری در یک نگاه دیده شود.",
     votes: "۶۴۲",
+    downvotes: "۱۸",
     commentsCount: 89,
-    time: "۱۱س",
-    category: "بازخورد",
+    time: "۱۱ ساعت",
+
     readTime: "۴ دقیقه مطالعه",
     comments: [
       {
@@ -145,6 +154,7 @@ export const feedItems: PostItem[] = [
         time: "۹س",
         content: "تیتر و متادیتا کمی به هم نزدیکند؛ فاصله عمودی را بیشتر کن.",
         likes: "۲۱",
+        dislikes: "۲",
       },
       {
         id: 302,
@@ -152,6 +162,7 @@ export const feedItems: PostItem[] = [
         time: "۸س",
         content: "برای موبایل شاید دکمه ها به شکل آیکن بهتر باشند.",
         likes: "۱۶",
+        dislikes: "۰",
       },
     ],
   },

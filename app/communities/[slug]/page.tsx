@@ -1,230 +1,250 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { FaCommentDots } from "react-icons/fa6";
-import { getCommunityBySlug, getPostsByCommunity } from "@/app/lib/forum-data";
+import { FaArrowDown, FaArrowUp, FaCommentDots, FaFire } from "react-icons/fa6";
+import { SiteHeader } from "@/app/components/site-header";
+import { JoinButton } from "@/app/components/community/join-button";
+import { CreatePostForm } from "@/app/components/community/create-post-form";
+import { findCommunityBySlug } from "@/app/lib/db/communities";
+import { getPostsByCommunity } from "@/app/lib/db/posts";
+import { isMember } from "@/app/lib/db/memberships";
+import { getSessionUser } from "@/app/lib/auth/session";
+import { getAvatarColor, getInitials, formatRelativeTime, estimateReadTime } from "@/app/lib/utils";
 
-type Params = {
-  slug: string;
-};
+type Params = { slug: string };
+type PageProps = { params: Promise<Params> };
 
-type PageProps = {
-  params: Promise<Params>;
-};
-
-export async function generateMetadata({
-  params,
-}: PageProps): Promise<Metadata> {
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const community = getCommunityBySlug(slug);
-
-  if (!community) {
-    return {
-      title: "انجمن پیدا نشد",
-      description: "انجمن مورد نظر وجود ندارد.",
-    };
-  }
-
+  const community = await findCommunityBySlug(slug);
+  if (!community) return { title: "انجمن پیدا نشد" };
   return {
     title: `${community.name} | هم‌اندیش`,
     description: community.description,
   };
 }
 
+function toPersian(n: number): string {
+  return String(n).replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[+d]!);
+}
+
 export default async function CommunityPage({ params }: PageProps) {
   const { slug } = await params;
-  const community = getCommunityBySlug(slug);
 
-  if (!community) {
-    notFound();
-  }
+  const [community, user] = await Promise.all([
+    findCommunityBySlug(slug),
+    getSessionUser(),
+  ]);
 
-  const posts = getPostsByCommunity(slug);
+  if (!community) notFound();
+
+  const [posts, joined] = await Promise.all([
+    getPostsByCommunity(slug),
+    user ? isMember(user.id, slug) : Promise.resolve(false),
+  ]);
+
+  const isOwner = user?.id === community.ownerUserId;
 
   return (
     <div className="min-h-screen bg-zinc-100 text-zinc-900">
-      <main className="mx-auto w-full max-w-6xl px-4 py-6">
-        <div className="mb-4">
-          <Link
-            href="/"
-            className="inline-flex items-center rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm font-medium hover:bg-zinc-100"
-          >
-            بازگشت به فید
+      <SiteHeader />
+
+      <main className="mx-auto w-full max-w-6xl px-4 py-4">
+        {/* Breadcrumb */}
+        <div className="mb-4 flex items-center gap-2 text-sm text-zinc-500">
+          <Link href="/" className="hover:text-zinc-800">
+            خانه
           </Link>
+          <span>·</span>
+          <span className="font-medium text-zinc-800">{community.name}</span>
         </div>
 
+        {/* Community hero */}
         <section className="overflow-hidden rounded-2xl border border-zinc-200 bg-white">
           <div className="bg-linear-to-l from-orange-500 to-amber-400 px-5 py-6 text-white">
-            <p className="text-xs/6 opacity-90">انجمن تخصصی</p>
-            <h1 className="mt-1 text-2xl font-bold">{community.name}</h1>
-            <p className="mt-2 max-w-3xl text-sm/7 text-white/90">
-              {community.description}
-            </p>
-          </div>
-          <div className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-2 text-xs">
-              <span className="rounded-full bg-zinc-100 px-3 py-1 font-medium text-zinc-700">
-                {community.members}
-              </span>
-              <span className="rounded-full bg-zinc-100 px-3 py-1 font-medium text-zinc-700">
-                ۳۴۵ پست این ماه
-              </span>
-            </div>
-            <div className="flex w-full items-center gap-2 sm:w-auto">
-              {community.isJoined ? (
-                <span className="flex-1 rounded-full bg-emerald-50 px-4 py-2 text-center text-sm font-semibold text-emerald-700 sm:flex-none">
-                  عضو انجمن هستی
-                </span>
-              ) : (
-                <button className="flex-1 rounded-full bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-600 sm:flex-none">
-                  عضویت در انجمن
-                </button>
-              )}
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <div className="mb-2 flex items-center gap-2.5">
+                  <span className="text-3xl leading-none">{community.icon}</span>
+                  <span className="text-xs font-medium text-white/70">
+                    انجمن تخصصی
+                  </span>
+                </div>
+                <h1 className="text-2xl font-bold">{community.name}</h1>
+                <p className="mt-2 max-w-2xl text-sm leading-7 text-white/90">
+                  {community.description}
+                </p>
+                <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-white/70">
+                  <span>{toPersian(community.memberCount)} عضو</span>
+                  <span>·</span>
+                  <span>{toPersian(posts.length)} پست</span>
+                </div>
+              </div>
+              <div className="shrink-0">
+                {user ? (
+                  <JoinButton
+                    slug={slug}
+                    initialJoined={joined}
+                    isOwner={isOwner}
+                  />
+                ) : (
+                  <Link
+                    href="/login"
+                    className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-orange-600 transition hover:bg-orange-50"
+                  >
+                    ورود برای عضویت
+                  </Link>
+                )}
+              </div>
             </div>
           </div>
         </section>
 
         <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[1fr_280px]">
           <section className="space-y-3">
-            {community.isJoined ? (
+            {/* Create post */}
+            {joined || isOwner ? (
               <section className="rounded-xl border border-zinc-200 bg-white p-4">
-                <h2 className="text-base font-semibold">
-                  ایجاد پست در {community.name}
-                </h2>
-                <p className="mt-1 text-sm text-zinc-600">
-                  فقط در انجمن هایی که عضو هستی می توانی پست منتشر کنی.
-                </p>
-
-                <label className="mt-4 block text-sm font-medium text-zinc-700">
-                  عنوان پست
-                </label>
-                <input
-                  type="text"
-                  placeholder="یک عنوان دقیق و واضح بنویس..."
-                  className="mt-2 w-full rounded-xl border border-zinc-200 px-4 py-2.5 text-sm outline-none ring-orange-500 transition focus:ring-2"
+                <CreatePostForm
+                  communitySlug={slug}
+                  communityName={community.name}
                 />
-
-                <label className="mt-4 block text-sm font-medium text-zinc-700">
-                  متن پست
-                </label>
-                <div className="mt-2 overflow-hidden rounded-xl border border-zinc-200">
-                  <div className="flex flex-wrap items-center gap-2 border-b border-zinc-200 bg-zinc-50 px-3 py-2 text-xs">
-                    <button className="rounded-md border border-zinc-300 bg-white px-2 py-1 font-semibold">
-                      B
-                    </button>
-                    <button className="rounded-md border border-zinc-300 bg-white px-2 py-1 italic">
-                      I
-                    </button>
-                    <button className="rounded-md border border-zinc-300 bg-white px-2 py-1 underline">
-                      U
-                    </button>
-                    <button className="rounded-md border border-zinc-300 bg-white px-2 py-1">
-                      لیست
-                    </button>
-                    <button className="rounded-md border border-zinc-300 bg-white px-2 py-1">
-                      لینک
-                    </button>
-                  </div>
-                  <div
-                    className="min-h-40 w-full px-4 py-3 text-sm leading-7 text-zinc-700 outline-none"
-                    contentEditable
-                    suppressContentEditableWarning
-                    role="textbox"
-                    aria-label="ویرایشگر متن پست"
-                    data-placeholder="متن کامل پستت را اینجا بنویس..."
-                  />
-                </div>
-
-                <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
-                  <button className="w-full rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium hover:bg-zinc-100 sm:w-auto">
-                    ذخیره پیش نویس
-                  </button>
-                  <button className="w-full rounded-full bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-600 sm:w-auto">
-                    انتشار در انجمن
-                  </button>
-                </div>
               </section>
             ) : (
-              <section className="rounded-xl border border-dashed border-zinc-300 bg-white p-4">
-                <h2 className="text-base font-semibold">ایجاد پست</h2>
-                <p className="mt-2 text-sm leading-7 text-zinc-600">
-                  برای انتشار پست باید اول عضو این انجمن شوی. بعد از عضویت، فرم
-                  عنوان و ویرایشگر متن برایت فعال می شود.
-                </p>
+              <section className="flex items-center justify-between gap-4 rounded-xl border border-dashed border-zinc-300 bg-white p-4">
+                <div>
+                  <h2 className="text-sm font-semibold text-zinc-800">
+                    می‌خواهی پست بگذاری؟
+                  </h2>
+                  <p className="mt-1 text-sm text-zinc-500">
+                    {user
+                      ? "برای انتشار پست، ابتدا عضو این انجمن شو."
+                      : "برای انتشار پست، ابتدا وارد حساب کاربری شو."}
+                  </p>
+                </div>
+                {user ? (
+                  <JoinButton slug={slug} initialJoined={false} isOwner={false} />
+                ) : (
+                  <Link
+                    href="/login"
+                    className="shrink-0 rounded-full bg-orange-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-orange-600"
+                  >
+                    ورود
+                  </Link>
+                )}
               </section>
             )}
 
-            <div className="flex flex-col gap-3 rounded-xl border border-zinc-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
-              <h2 className="text-lg font-semibold">پست های این انجمن</h2>
-              <div className="flex flex-wrap items-center gap-2 text-sm">
-                <button className="rounded-full bg-zinc-900 px-3 py-1.5 text-white">
+            {/* Sort + header */}
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-200 bg-white px-4 py-3">
+              <h2 className="text-sm font-semibold text-zinc-800">
+                پست‌های این انجمن
+              </h2>
+              <div className="flex items-center gap-1.5 text-xs">
+                <button className="rounded-full bg-zinc-900 px-3 py-1.5 font-semibold text-white">
                   جدیدترین
                 </button>
-                <button className="rounded-full bg-zinc-100 px-3 py-1.5 hover:bg-zinc-200">
-                  پرمخاطب
-                </button>
-                <button className="rounded-full bg-zinc-100 px-3 py-1.5 hover:bg-zinc-200">
-                  داغ
+                <button className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-3 py-1.5 font-medium transition hover:bg-zinc-200">
+                  <FaFire className="size-3 text-orange-500" />
+                  داغ‌ترین
                 </button>
               </div>
             </div>
 
+            {/* Posts */}
             {posts.length === 0 ? (
-              <div className="rounded-xl border border-zinc-200 bg-white p-6 text-center text-sm text-zinc-600">
-                هنوز پستی در این انجمن منتشر نشده است.
+              <div className="rounded-xl border border-zinc-200 bg-white p-8 text-center">
+                <p className="text-zinc-500">
+                  هنوز پستی در این انجمن منتشر نشده است.
+                </p>
+                {(joined || isOwner) && (
+                  <p className="mt-2 text-sm text-zinc-400">
+                    اولین نفری باش که یک پست می‌گذاری!
+                  </p>
+                )}
               </div>
             ) : (
               posts.map((post) => (
                 <article
                   key={post.id}
-                  className="rounded-xl border border-zinc-200 bg-white p-4 transition hover:border-zinc-300"
+                  className="rounded-xl border border-zinc-200 bg-white p-4 transition hover:border-zinc-300 hover:shadow-sm"
                 >
-                  <div className="mb-2 flex items-center gap-2 text-xs text-zinc-500">
-                    <span className="rounded-full bg-zinc-100 px-2 py-1">
-                      {post.category}
+                  <div className="mb-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-500">
+                    <span
+                      className={`inline-flex size-5 items-center justify-center rounded-full text-[10px] font-bold text-white ${getAvatarColor(post.authorName)}`}
+                    >
+                      {getInitials(post.authorName)}
                     </span>
-                    <span>{post.author}</span>
-                    <span>{post.time} پیش</span>
+                    <span>{post.authorName}</span>
+                    <span className="text-zinc-300">·</span>
+                    <span>{formatRelativeTime(post.createdAt)}</span>
+                    <span className="text-zinc-300">·</span>
+                    <span>{estimateReadTime(post.body)}</span>
                   </div>
+
                   <Link href={`/posts/${post.id}`} className="block">
-                    <h3 className="text-lg font-semibold leading-snug hover:text-orange-600">
+                    <h3 className="text-base font-bold leading-snug text-zinc-900 hover:text-orange-600">
                       {post.title}
                     </h3>
                   </Link>
-                  <p className="mt-2 text-sm leading-7 text-zinc-700">
+
+                  <p className="mt-2 line-clamp-2 text-sm leading-6 text-zinc-500">
                     {post.body}
                   </p>
-                  <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
-                    <span className="rounded-full bg-zinc-100 px-3 py-1.5">
-                      ▲ {post.votes}
+
+                  <div className="mt-3.5 flex flex-wrap items-center gap-2">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-zinc-100 px-3 py-1.5 text-sm font-medium">
+                      <FaArrowUp className="size-3" />
+                      {toPersian(post.upvotes)}
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-zinc-100 px-3 py-1.5 text-sm font-medium">
+                      <FaArrowDown className="size-3" />
+                      {toPersian(post.downvotes)}
                     </span>
                     <Link
                       href={`/posts/${post.id}`}
-                      className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-3 py-1.5 hover:bg-zinc-200"
+                      className="inline-flex items-center gap-1.5 rounded-full bg-zinc-100 px-3 py-1.5 text-sm font-medium transition hover:bg-zinc-200"
                     >
-                      <FaCommentDots aria-hidden className="size-4" />
-                      {post.commentsCount}
+                      <FaCommentDots className="size-3.5" />
+                      {toPersian(post.commentsCount)}
                     </Link>
-                    <button className="rounded-full bg-zinc-100 px-3 py-1.5 hover:bg-zinc-200">
-                      اشتراک گذاری
-                    </button>
                   </div>
                 </article>
               ))
             )}
           </section>
 
+          {/* Sidebar */}
           <aside className="space-y-3 lg:sticky lg:top-20 lg:h-fit">
             <section className="rounded-xl border border-zinc-200 bg-white p-4">
               <h3 className="text-sm font-semibold text-zinc-800">
                 درباره انجمن
               </h3>
-              <p className="mt-2 text-sm leading-7 text-zinc-600">
+              <p className="mt-2 text-sm leading-6 text-zinc-600">
                 {community.description}
               </p>
-              <div className="mt-3 space-y-2 text-xs text-zinc-500">
-                <p>تاسیس: فروردین ۱۴۰۳</p>
-                <p>میانگین پاسخ: ۲ ساعت</p>
+              <div className="mt-3 space-y-1.5 border-t border-zinc-100 pt-3 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-zinc-500">اعضا</span>
+                  <span className="font-medium text-zinc-800">
+                    {toPersian(community.memberCount)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-zinc-500">پست‌ها</span>
+                  <span className="font-medium text-zinc-800">
+                    {toPersian(posts.length)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-zinc-500">تاسیس</span>
+                  <span className="font-medium text-zinc-800">
+                    {community.createdAt.toLocaleDateString("fa-IR", {
+                      year: "numeric",
+                      month: "long",
+                    })}
+                  </span>
+                </div>
               </div>
             </section>
 
@@ -232,10 +252,19 @@ export default async function CommunityPage({ params }: PageProps) {
               <h3 className="text-sm font-semibold text-zinc-800">
                 قوانین انجمن
               </h3>
-              <ul className="mt-2 space-y-2 text-sm text-zinc-600">
-                <li>قبل از ارسال، پست های مشابه را جستجو کن.</li>
-                <li>عنوان واضح و قابل فهم بنویس.</li>
-                <li>نقد سازنده بده و محترمانه پاسخ بده.</li>
+              <ul className="mt-2.5 space-y-2.5 text-sm text-zinc-600">
+                <li className="flex items-start gap-2">
+                  <span className="mt-0.5 shrink-0 font-bold text-orange-500">۱.</span>
+                  قبل از ارسال، پست‌های مشابه را جستجو کن.
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="mt-0.5 shrink-0 font-bold text-orange-500">۲.</span>
+                  عنوان واضح و قابل فهم بنویس.
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="mt-0.5 shrink-0 font-bold text-orange-500">۳.</span>
+                  نقد سازنده بده و محترمانه پاسخ بده.
+                </li>
               </ul>
             </section>
           </aside>
