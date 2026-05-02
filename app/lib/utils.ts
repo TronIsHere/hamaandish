@@ -1,11 +1,3 @@
-export const communityIcons: Record<string, string> = {
-  startup: "🚀",
-  "side-project": "🛠️",
-  "web-dev": "💻",
-  "design-review": "🎨",
-  programming: "⌨️",
-};
-
 const avatarColors = [
   "bg-violet-500",
   "bg-blue-500",
@@ -46,7 +38,8 @@ export function formatRelativeTime(date: Date): string {
 }
 
 export function estimateReadTime(text: string): string {
-  const words = text.trim().split(/\s+/).length;
+  const plain = text.replace(/<[^>]*>/g, " ").trim();
+  const words = plain.split(/\s+/).filter(Boolean).length;
   const minutes = Math.max(1, Math.round(words / 200));
   return `${toPersianDigits(minutes)} دقیقه مطالعه`;
 }

@@ -1,5 +1,6 @@
 import { ObjectId } from "mongodb";
 import { getAppDb } from "@/app/lib/db/client";
+import { createNotification, getPendingMilestones } from "@/app/lib/db/notifications";
 
 type PostVoteDoc = {
   userId: string;
@@ -39,7 +40,7 @@ export async function togglePostVote(
   const desired: 1 | -1 = direction === "up" ? 1 : -1;
   const col = await votesCol();
   const db = await getAppDb();
-  const posts = db.collection<{ upvotes: number; downvotes: number }>("posts");
+  const posts = db.collection<{ upvotes: number; downvotes: number; authorId: string; title: string }>("posts");
   const oid = new ObjectId(postId);
 
   const existing = await col.findOne({ userId, postId });
@@ -68,10 +69,25 @@ export async function togglePostVote(
   const updated = await posts.findOneAndUpdate(
     { _id: oid },
     { $inc: { upvotes: incUp, downvotes: incDown } },
-    { returnDocument: "after" },
+    { returnDocument: "after", projection: { upvotes: 1, downvotes: 1, authorId: 1, title: 1 } },
   );
 
   if (!updated) return null;
+
+  // Fire-and-forget milestone notifications (only when upvotes increased)
+  if (incUp > 0 && updated.authorId !== userId) {
+    getPendingMilestones(postId, updated.upvotes).then((milestones) => {
+      for (const milestone of milestones) {
+        createNotification({
+          userId: updated.authorId,
+          type: "vote_milestone",
+          postId,
+          postTitle: updated.title,
+          milestone,
+        }).catch(() => {});
+      }
+    }).catch(() => {});
+  }
 
   return {
     upvotes: updated.upvotes,

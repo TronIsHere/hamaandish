@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
+import { TiptapEditor } from "@/app/components/editor/tiptap-editor";
 
 type Props = {
   communitySlug: string;
@@ -16,13 +17,17 @@ export function CreatePostForm({ communitySlug, communityName }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const titleRef = useRef<HTMLInputElement>(null);
-  const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const [body, setBody] = useState("");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     const title = titleRef.current?.value ?? "";
-    const body = bodyRef.current?.value ?? "";
+
+    if (body.replace(/<[^>]*>/g, "").trim().length < 10) {
+      setError("متن پست باید حداقل ۱۰ کاراکتر داشته باشد.");
+      return;
+    }
 
     setPending(true);
     try {
@@ -37,7 +42,7 @@ export function CreatePostForm({ communitySlug, communityName }: Props) {
         return;
       }
       if (titleRef.current) titleRef.current.value = "";
-      if (bodyRef.current) bodyRef.current.value = "";
+      setBody("");
       router.push(`/posts/${data.id}`);
       router.refresh();
     } catch {
@@ -81,14 +86,7 @@ export function CreatePostForm({ communitySlug, communityName }: Props) {
         <label className="mb-1.5 block text-sm font-medium text-zinc-700">
           متن پست
         </label>
-        <textarea
-          ref={bodyRef}
-          required
-          minLength={10}
-          rows={5}
-          placeholder="متن کامل پستت را اینجا بنویس..."
-          className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm leading-7 outline-none ring-orange-500 transition focus:ring-2"
-        />
+        <TiptapEditor value={body} onChange={setBody} />
       </div>
 
       <div className="flex justify-end gap-2">

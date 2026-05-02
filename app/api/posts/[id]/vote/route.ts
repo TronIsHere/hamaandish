@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
 import { getSessionUser } from "@/app/lib/auth/session";
-import { findCommunityBySlug } from "@/app/lib/db/communities";
-import { isMember } from "@/app/lib/db/memberships";
 import { getPostById } from "@/app/lib/db/posts";
 import { togglePostVote } from "@/app/lib/db/post-votes";
 
@@ -23,19 +21,6 @@ export async function POST(
   const post = await getPostById(id);
   if (!post) {
     return NextResponse.json({ error: "پست پیدا نشد." }, { status: 404 });
-  }
-
-  const community = await findCommunityBySlug(post.communitySlug);
-  if (!community) {
-    return NextResponse.json({ error: "انجمن پیدا نشد." }, { status: 404 });
-  }
-
-  const member = await isMember(user.id, post.communitySlug);
-  if (!member) {
-    return NextResponse.json(
-      { error: "برای رأی‌دادن باید عضو این انجمن باشی." },
-      { status: 403 },
-    );
   }
 
   let body: { direction?: unknown };

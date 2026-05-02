@@ -11,11 +11,9 @@ function toPersian(n: number): string {
 
 type Props = {
   postId: string;
-  communitySlug: string;
   initialUpvotes: number;
   initialDownvotes: number;
   initialUserVote: 1 | -1 | null;
-  canVote: boolean;
   isLoggedIn: boolean;
 };
 
@@ -24,11 +22,9 @@ const btnBase =
 
 export function PostVoteBar({
   postId,
-  communitySlug,
   initialUpvotes,
   initialDownvotes,
   initialUserVote,
-  canVote,
   isLoggedIn,
 }: Props) {
   const router = useRouter();
@@ -40,8 +36,8 @@ export function PostVoteBar({
 
   async function vote(direction: "up" | "down") {
     setError(null);
-    if (!canVote) {
-      router.push(isLoggedIn ? `/communities/${communitySlug}` : "/login");
+    if (!isLoggedIn) {
+      router.push("/login");
       return;
     }
 
@@ -113,28 +109,16 @@ export function PostVoteBar({
           <span className="text-sm">{toPersian(down)}</span>
         </button>
       </div>
-      {!canVote && (
+      {!isLoggedIn && (
         <p className="text-xs text-zinc-400">
           برای ثبت رأی مثبت یا منفی{" "}
-          {isLoggedIn ? (
-            <Link
-              href={`/communities/${communitySlug}`}
-              className="font-semibold text-orange-600 hover:underline"
-            >
-              عضو این انجمن شو
-            </Link>
-          ) : (
-            <Link
-              href="/login"
-              className="font-semibold text-orange-600 hover:underline"
-            >
-              وارد شو
-            </Link>
-          )}
+          <Link href="/login" className="font-semibold text-orange-600 hover:underline">
+            وارد شو
+          </Link>
           .
         </p>
       )}
-      {canVote && error && (
+      {isLoggedIn && error && (
         <p className="text-xs text-red-600" role="alert">
           {error}
         </p>

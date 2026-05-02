@@ -11,7 +11,6 @@ import { joinCommunity } from "@/app/lib/db/memberships";
 type Body = {
   name?: string;
   description?: string;
-  icon?: string;
   slug?: string;
 };
 
@@ -53,7 +52,6 @@ export async function POST(request: Request) {
     );
   }
 
-  const icon = (body.icon ?? "💬").trim() || "💬";
   const slug = normalizeLatinSlug(body.slug ?? "");
 
   if (!isValidCommunitySlug(slug)) {
@@ -79,7 +77,7 @@ export async function POST(request: Request) {
       slug,
       name,
       description,
-      icon,
+      icon: "",
       ownerUserId: user.id,
     });
 

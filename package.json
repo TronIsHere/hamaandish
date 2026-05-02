@@ -10,6 +10,11 @@
     "db:indexes": "node scripts/create-indexes.mjs"
   },
   "dependencies": {
+    "@tiptap/extension-image": "^3.22.5",
+    "@tiptap/extension-placeholder": "^3.22.5",
+    "@tiptap/pm": "^3.22.5",
+    "@tiptap/react": "^3.22.5",
+    "@tiptap/starter-kit": "^3.22.5",
     "bcryptjs": "^3.0.3",
     "jose": "^6.2.2",
     "mongodb": "^7.2.0",

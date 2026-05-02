@@ -2,6 +2,7 @@ import Link from "next/link";
 import { FaPlus } from "react-icons/fa6";
 import { logout } from "@/app/actions/auth";
 import { getSessionUser } from "@/app/lib/auth/session";
+import { NotificationBell } from "@/app/components/notifications/notification-bell";
 
 export async function SiteHeader() {
   const user = await getSessionUser();
@@ -29,6 +30,7 @@ export async function SiteHeader() {
                 <FaPlus className="size-3" />
                 انجمن
               </Link>
+              <NotificationBell />
               <span className="hidden max-w-40 truncate text-sm font-medium text-zinc-800 sm:inline">
                 {user.name}
               </span>

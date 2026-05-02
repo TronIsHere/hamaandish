@@ -3,14 +3,11 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-const ICON_OPTIONS = ["💬", "🚀", "🛠️", "💻", "🎨", "📚", "🎮", "🏆", "🌱", "⚡"];
-
 const inputClass =
   "w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm outline-none ring-orange-500 transition focus:ring-2";
 
 export function CreateCommunityForm() {
   const router = useRouter();
-  const [icon, setIcon] = useState("💬");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -27,7 +24,7 @@ export function CreateCommunityForm() {
       const res = await fetch("/api/communities", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, slug, description, icon }),
+        body: JSON.stringify({ name, slug, description }),
       });
       const data = (await res.json()) as { ok?: boolean; error?: string; slug?: string };
       if (!res.ok) {
@@ -53,28 +50,6 @@ export function CreateCommunityForm() {
           {error}
         </p>
       )}
-
-      <div>
-        <label className="mb-2 block text-sm font-medium text-zinc-700">
-          آیکون انجمن
-        </label>
-        <div className="flex flex-wrap gap-2">
-          {ICON_OPTIONS.map((emoji) => (
-            <button
-              key={emoji}
-              type="button"
-              onClick={() => setIcon(emoji)}
-              className={`rounded-xl border-2 p-2 text-xl transition ${
-                icon === emoji
-                  ? "border-orange-500 bg-orange-50"
-                  : "border-zinc-200 bg-white hover:border-zinc-300"
-              }`}
-            >
-              {emoji}
-            </button>
-          ))}
-        </div>
-      </div>
 
       <div>
         <label htmlFor="name" className="mb-1.5 block text-sm font-medium text-zinc-700">

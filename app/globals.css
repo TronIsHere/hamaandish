@@ -24,8 +24,84 @@ body {
   font-family: var(--font-iran-sans), Arial, Helvetica, sans-serif;
 }
 
-[contenteditable][data-placeholder]:empty::before {
+/* Tiptap editor placeholder */
+.ProseMirror p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
-  color: #71717a;
+  color: #a1a1aa;
   pointer-events: none;
+  float: left;
+  height: 0;
+}
+
+/* Shared prose styles for editor & post display */
+.post-editor,
+.post-body {
+  direction: rtl;
+}
+
+.post-editor h1, .post-body h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+  line-height: 1.4;
+  color: #18181b;
+}
+
+.post-editor h2, .post-body h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  line-height: 1.4;
+  color: #18181b;
+}
+
+.post-editor h3, .post-body h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-top: 0.875rem;
+  margin-bottom: 0.375rem;
+  line-height: 1.4;
+  color: #27272a;
+}
+
+.post-editor p, .post-body p {
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.post-editor strong, .post-body strong {
+  font-weight: 700;
+}
+
+.post-editor em, .post-body em {
+  font-style: italic;
+}
+
+.post-editor ul, .post-body ul {
+  list-style-type: disc;
+  padding-right: 1.5rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.post-editor ol, .post-body ol {
+  list-style-type: decimal;
+  padding-right: 1.5rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.post-editor li, .post-body li {
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
+}
+
+.post-editor img, .post-body img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
 }

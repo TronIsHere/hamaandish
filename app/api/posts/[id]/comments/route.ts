@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
+import { ObjectId } from "mongodb";
 import { getSessionUser } from "@/app/lib/auth/session";
-import { findCommunityBySlug } from "@/app/lib/db/communities";
 import { createComment, listCommentsByPost } from "@/app/lib/db/comments";
-import { isMember } from "@/app/lib/db/memberships";
 import { getPostById } from "@/app/lib/db/posts";
 
 type Params = { id: string };
@@ -47,24 +46,21 @@ export async function POST(
     return NextResponse.json({ error: "پست پیدا نشد." }, { status: 404 });
   }
 
-  const community = await findCommunityBySlug(post.communitySlug);
-  if (!community) {
-    return NextResponse.json({ error: "انجمن پیدا نشد." }, { status: 404 });
-  }
-
-  const member = await isMember(user.id, post.communitySlug);
-  if (!member) {
-    return NextResponse.json(
-      { error: "فقط اعضای انجمن می‌توانند دیدگاه بگذارند." },
-      { status: 403 },
-    );
-  }
-
-  let body: { body?: unknown };
+  let body: { body?: unknown; parentId?: unknown };
   try {
-    body = (await request.json()) as { body?: unknown };
+    body = (await request.json()) as { body?: unknown; parentId?: unknown };
   } catch {
     return NextResponse.json({ error: "درخواست نامعتبر است." }, { status: 400 });
+  }
+
+  const parentRaw = body.parentId;
+  let parentId: string | null = null;
+  if (typeof parentRaw === "string" && parentRaw.trim().length > 0) {
+    const trimmed = parentRaw.trim();
+    if (!ObjectId.isValid(trimmed)) {
+      return NextResponse.json({ error: "شناسه پاسخ نامعتبر است." }, { status: 400 });
+    }
+    parentId = trimmed;
   }
 
   const text =
@@ -86,13 +82,17 @@ export async function POST(
   try {
     const comment = await createComment({
       postId: id,
+      parentId,
       authorId: user.id,
       authorName: user.name,
       body: text,
     });
 
     if (!comment) {
-      return NextResponse.json({ error: "پست پیدا نشد." }, { status: 404 });
+      return NextResponse.json(
+        { error: parentId ? "پاسخ نامعتبر است یا والد وجود ندارد." : "پست پیدا نشد." },
+        { status: parentId ? 400 : 404 },
+      );
     }
 
     return NextResponse.json({ ok: true, comment }, { status: 201 });

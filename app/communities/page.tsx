@@ -72,10 +72,9 @@ export default async function CommunitiesPage() {
                 <Link
                   key={community.slug}
                   href={`/communities/${community.slug}`}
-                  className="flex items-start gap-4 rounded-2xl border border-zinc-200 bg-white p-4 transition hover:border-zinc-300 hover:shadow-sm"
+                  className="block rounded-2xl border border-zinc-200 bg-white p-4 transition hover:border-zinc-300 hover:shadow-sm"
                 >
-                  <span className="text-3xl leading-none">{community.icon}</span>
-                  <div className="min-w-0 flex-1">
+                  <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <h2 className="truncate text-sm font-bold text-zinc-900">
                         {community.name}

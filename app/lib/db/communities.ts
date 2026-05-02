@@ -88,6 +88,44 @@ export async function incrementMemberCount(slug: string, delta: 1 | -1) {
   await col.updateOne({ slug }, { $inc: { memberCount: delta } });
 }
 
+/** Removes the community doc and dependent rows (posts, comments, votes, notifications, memberships). */
+export async function deleteCommunityAndRelated(slug: string): Promise<boolean> {
+  const db = await getAppDb();
+  const postsCol = db.collection("posts");
+  const postDocs = await postsCol
+    .find({ communitySlug: slug })
+    .project({ _id: 1 })
+    .toArray();
+  const postIds = postDocs.map((p) => p._id.toHexString());
+
+  if (postIds.length > 0) {
+    const commentsCol = db.collection("comments");
+    const commentDocs = await commentsCol
+      .find({ postId: { $in: postIds } })
+      .project({ _id: 1 })
+      .toArray();
+    const commentIds = commentDocs.map((c) => c._id.toHexString());
+
+    if (commentIds.length > 0) {
+      await db.collection("comment_votes").deleteMany({
+        commentId: { $in: commentIds },
+      });
+    }
+    await commentsCol.deleteMany({ postId: { $in: postIds } });
+    await db.collection("post_votes").deleteMany({ postId: { $in: postIds } });
+    await db
+      .collection("notifications")
+      .deleteMany({ postId: { $in: postIds } });
+  }
+
+  await postsCol.deleteMany({ communitySlug: slug });
+  await db.collection("memberships").deleteMany({ communitySlug: slug });
+
+  const col = await getCol();
+  const result = await col.deleteOne({ slug });
+  return result.deletedCount === 1;
+}
+
 const LATIN_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 /** Normalizes user input to a lowercase ASCII slug fragment (may be invalid / empty). */

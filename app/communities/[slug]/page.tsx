@@ -5,11 +5,12 @@ import { FaArrowDown, FaArrowUp, FaCommentDots, FaFire } from "react-icons/fa6";
 import { SiteHeader } from "@/app/components/site-header";
 import { JoinButton } from "@/app/components/community/join-button";
 import { CreatePostForm } from "@/app/components/community/create-post-form";
+import { DeleteCommunityButton } from "@/app/components/community/delete-community-button";
 import { findCommunityBySlug } from "@/app/lib/db/communities";
 import { getPostsByCommunity } from "@/app/lib/db/posts";
 import { isMember } from "@/app/lib/db/memberships";
 import { getSessionUser } from "@/app/lib/auth/session";
-import { getAvatarColor, getInitials, formatRelativeTime, estimateReadTime } from "@/app/lib/utils";
+import { formatRelativeTime, estimateReadTime, getAvatarColor, getInitials } from "@/app/lib/utils";
 
 type Params = { slug: string };
 type PageProps = { params: Promise<Params> };
@@ -64,12 +65,9 @@ export default async function CommunityPage({ params }: PageProps) {
           <div className="bg-linear-to-l from-orange-500 to-amber-400 px-5 py-6 text-white">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <div className="mb-2 flex items-center gap-2.5">
-                  <span className="text-3xl leading-none">{community.icon}</span>
-                  <span className="text-xs font-medium text-white/70">
-                    انجمن تخصصی
-                  </span>
-                </div>
+                <p className="mb-2 text-xs font-medium text-white/70">
+                  انجمن تخصصی
+                </p>
                 <h1 className="text-2xl font-bold">{community.name}</h1>
                 <p className="mt-2 max-w-2xl text-sm leading-7 text-white/90">
                   {community.description}
@@ -189,7 +187,7 @@ export default async function CommunityPage({ params }: PageProps) {
                   </Link>
 
                   <p className="mt-2 line-clamp-2 text-sm leading-6 text-zinc-500">
-                    {post.body}
+                    {post.body.replace(/<[^>]*>/g, " ").trim()}
                   </p>
 
                   <div className="mt-3.5 flex flex-wrap items-center gap-2">
@@ -246,6 +244,12 @@ export default async function CommunityPage({ params }: PageProps) {
                   </span>
                 </div>
               </div>
+              {isOwner && (
+                <DeleteCommunityButton
+                  slug={slug}
+                  communityName={community.name}
+                />
+              )}
             </section>
 
             <section className="rounded-xl border border-zinc-200 bg-white p-4">

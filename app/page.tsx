@@ -55,9 +55,8 @@ export default async function Home() {
                   <Link
                     key={community.slug}
                     href={`/communities/${community.slug}`}
-                    className="flex w-full items-center gap-3 rounded-lg px-2 py-2.5 transition hover:bg-zinc-50"
+                    className="flex w-full items-center gap-2 rounded-lg px-2 py-2.5 transition hover:bg-zinc-50"
                   >
-                    <span className="text-lg leading-none">{community.icon}</span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-medium text-zinc-800">
                         {community.name}
@@ -143,7 +142,7 @@ export default async function Home() {
                 </Link>
 
                 <p className="mt-2 line-clamp-2 text-sm leading-6 text-zinc-500">
-                  {post.body}
+                  {post.body.replace(/<[^>]*>/g, " ").trim()}
                 </p>
 
                 <div className="mt-3.5 flex flex-wrap items-center gap-2">

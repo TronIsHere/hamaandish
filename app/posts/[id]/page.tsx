@@ -2,13 +2,15 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { FaBookmark, FaCommentDots } from "react-icons/fa6";
-import { PostCommentsSection } from "@/app/components/post/post-comments-section";
+import {
+  PostCommentsSection,
+  type SerializedCommentNode,
+} from "@/app/components/post/post-comments-section";
 import { PostVoteBar } from "@/app/components/post/post-vote-bar";
 import { SiteHeader } from "@/app/components/site-header";
 import { getSessionUser } from "@/app/lib/auth/session";
 import { getUserCommentVotes } from "@/app/lib/db/comment-votes";
-import { listCommentsByPost } from "@/app/lib/db/comments";
-import { isMember } from "@/app/lib/db/memberships";
+import { listCommentsByPost, nestComments, type CommentTreeNode } from "@/app/lib/db/comments";
 import { getUserPostVote } from "@/app/lib/db/post-votes";
 import { getPostById } from "@/app/lib/db/posts";
 import { formatRelativeTime, estimateReadTime } from "@/app/lib/utils";
@@ -26,7 +28,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   if (!post) return { title: "پست پیدا نشد" };
   return {
     title: `${post.title} | هم‌اندیش`,
-    description: post.body.slice(0, 160),
+    description: post.body.replace(/<[^>]*>/g, " ").trim().slice(0, 160),
   };
 }
 
@@ -37,26 +39,30 @@ export default async function PostPage({ params }: PageProps) {
   if (!post) notFound();
 
   const user = await getSessionUser();
-  const [comments, member, userPostVote] = await Promise.all([
+  const [comments, userPostVote] = await Promise.all([
     listCommentsByPost(id),
-    user ? isMember(user.id, post.communitySlug) : Promise.resolve(false),
     getUserPostVote(user?.id, id),
   ]);
-  const canEngage = Boolean(user && member);
   const votesByComment = await getUserCommentVotes(
     user?.id,
     comments.map((c) => c.id),
   );
 
-  const serializedComments = comments.map((c) => ({
-    id: c.id,
-    authorName: c.authorName,
-    body: c.body,
-    createdAt: c.createdAt.toISOString(),
-    upvotes: c.upvotes,
-    downvotes: c.downvotes,
-    userVote: votesByComment[c.id] ?? null,
-  }));
+  function serializeTree(nodes: CommentTreeNode[]): SerializedCommentNode[] {
+    return nodes.map((n) => ({
+      id: n.id,
+      parentId: n.parentId,
+      authorName: n.authorName,
+      body: n.body,
+      createdAt: n.createdAt.toISOString(),
+      upvotes: n.upvotes,
+      downvotes: n.downvotes,
+      userVote: votesByComment[n.id] ?? null,
+      replies: serializeTree(n.replies),
+    }));
+  }
+
+  const commentTreeRoots = serializeTree(nestComments(comments));
 
   return (
     <div className="min-h-screen bg-zinc-100 text-zinc-900">
@@ -99,19 +105,18 @@ export default async function PostPage({ params }: PageProps) {
           </div>
 
           <h1 className="mt-4 text-2xl font-bold leading-snug">{post.title}</h1>
-          <p className="mt-4 whitespace-pre-wrap text-base leading-8 text-zinc-700">
-            {post.body}
-          </p>
+          <div
+            className="post-body mt-4 text-base leading-8 text-zinc-700"
+            dangerouslySetInnerHTML={{ __html: post.body }}
+          />
 
           <div className="mt-6 space-y-3 border-t border-zinc-100 pt-4 text-sm">
             <PostVoteBar
               key={`pv-${post.id}-${post.upvotes}-${post.downvotes}-${userPostVote ?? "none"}`}
               postId={post.id}
-              communitySlug={post.communitySlug}
               initialUpvotes={post.upvotes}
               initialDownvotes={post.downvotes}
               initialUserVote={userPostVote}
-              canVote={canEngage}
               isLoggedIn={Boolean(user)}
             />
             <div className="flex flex-wrap items-center gap-2">
@@ -132,9 +137,7 @@ export default async function PostPage({ params }: PageProps) {
 
         <PostCommentsSection
           postId={post.id}
-          communitySlug={post.communitySlug}
-          initialComments={serializedComments}
-          canCommentAndVote={canEngage}
+          initialCommentTree={commentTreeRoots}
           isLoggedIn={Boolean(user)}
         />
       </main>
