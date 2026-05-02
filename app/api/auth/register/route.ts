@@ -1,16 +1,12 @@
 import { NextResponse } from "next/server";
-import { createSessionToken } from "@/app/lib/auth/session";
 import { hashPassword } from "@/app/lib/auth/password";
 import { createUser } from "@/app/lib/auth/users";
 import {
   validateDisplayName,
   validateEmail,
   validatePassword,
+  validateReferrerId,
 } from "@/app/lib/auth/validate";
-import {
-  SESSION_COOKIE_NAME,
-  SESSION_MAX_AGE_SECONDS,
-} from "@/app/lib/auth/config";
 
 type Body = {
   name?: string;
@@ -18,6 +14,7 @@ type Body = {
   password?: string;
   confirmPassword?: string;
   acceptTerms?: boolean;
+  referrerUserId?: string;
 };
 
 export async function POST(request: Request) {
@@ -57,30 +54,27 @@ export async function POST(request: Request) {
     );
   }
 
+  const refErr = validateReferrerId(body.referrerUserId ?? "");
+  if (refErr) {
+    return NextResponse.json({ error: refErr }, { status: 400 });
+  }
+
+  const referrerText = body.referrerUserId!.trim();
+
   const passwordHash = await hashPassword(body.password!);
 
   try {
-    const row = await createUser({
+    await createUser({
       email: body.email!,
       name: body.name!.trim(),
       passwordHash,
+      referrerUserIdHex: referrerText,
     });
 
-    const token = await createSessionToken({
-      id: row.id,
-      email: row.email,
-      name: row.name,
+    return NextResponse.json({
+      ok: true,
+      pendingApproval: true,
     });
-
-    const res = NextResponse.json({ ok: true });
-    res.cookies.set(SESSION_COOKIE_NAME, token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: SESSION_MAX_AGE_SECONDS,
-      path: "/",
-    });
-    return res;
   } catch (err) {
     if (
       typeof err === "object" &&

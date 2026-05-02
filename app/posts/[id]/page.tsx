@@ -9,6 +9,7 @@ import {
 import { PostVoteBar } from "@/app/components/post/post-vote-bar";
 import { SiteHeader } from "@/app/components/site-header";
 import { getSessionUser } from "@/app/lib/auth/session";
+import { isAdminEmail } from "@/app/lib/auth/admin";
 import { getUserCommentVotes } from "@/app/lib/db/comment-votes";
 import { listCommentsByPost, nestComments, type CommentTreeNode } from "@/app/lib/db/comments";
 import { getUserPostVote } from "@/app/lib/db/post-votes";
@@ -48,6 +49,8 @@ export default async function PostPage({ params }: PageProps) {
     comments.map((c) => c.id),
   );
 
+  const pageIsAdmin = Boolean(user && isAdminEmail(user.email));
+
   function serializeTree(nodes: CommentTreeNode[]): SerializedCommentNode[] {
     return nodes.map((n) => ({
       id: n.id,
@@ -58,6 +61,7 @@ export default async function PostPage({ params }: PageProps) {
       upvotes: n.upvotes,
       downvotes: n.downvotes,
       userVote: votesByComment[n.id] ?? null,
+      deletedByAdmin: n.deletedByAdmin,
       replies: serializeTree(n.replies),
     }));
   }
@@ -139,6 +143,7 @@ export default async function PostPage({ params }: PageProps) {
           postId={post.id}
           initialCommentTree={commentTreeRoots}
           isLoggedIn={Boolean(user)}
+          isAdmin={pageIsAdmin}
         />
       </main>
     </div>

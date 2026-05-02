@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { FaPlus } from "react-icons/fa6";
 import { SiteHeader } from "@/app/components/site-header";
 import { listCommunities } from "@/app/lib/db/communities";
@@ -16,14 +17,16 @@ function toPersian(n: number): string {
 }
 
 export default async function CommunitiesPage() {
-  const [user, communities] = await Promise.all([
-    getSessionUser(),
-    listCommunities().catch(() => []),
-  ]);
+  const user = await getSessionUser();
+  if (!user) {
+    redirect("/login?next=" + encodeURIComponent("/communities"));
+  }
 
-  const joinedSlugs = user
-    ? await getMemberCommunitySlugs(user.id).catch(() => [] as string[])
-    : [];
+  const communities = await listCommunities().catch(() => []);
+
+  const joinedSlugs = await getMemberCommunitySlugs(user.id).catch(
+    () => [] as string[],
+  );
   const joinedSet = new Set(joinedSlugs);
 
   return (
@@ -38,15 +41,13 @@ export default async function CommunitiesPage() {
               {toPersian(communities.length)} انجمن تخصصی
             </p>
           </div>
-          {user && (
-            <Link
-              href="/communities/create"
-              className="inline-flex items-center gap-2 rounded-full bg-orange-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-orange-600"
-            >
-              <FaPlus className="size-3.5" />
-              ساخت انجمن
-            </Link>
-          )}
+          <Link
+            href="/communities/create"
+            className="inline-flex items-center gap-2 rounded-full bg-orange-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-orange-600"
+          >
+            <FaPlus className="size-3.5" />
+            ساخت انجمن
+          </Link>
         </div>
 
         {communities.length === 0 ? (
@@ -58,10 +59,10 @@ export default async function CommunitiesPage() {
               اولین نفر باش که یک انجمن تخصصی می‌سازی!
             </p>
             <Link
-              href={user ? "/communities/create" : "/login"}
+              href="/communities/create"
               className="mt-5 inline-flex rounded-full bg-orange-500 px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-orange-600"
             >
-              {user ? "ساخت اولین انجمن" : "ورود برای ساخت انجمن"}
+              ساخت اولین انجمن
             </Link>
           </div>
         ) : (
@@ -98,27 +99,6 @@ export default async function CommunitiesPage() {
           </div>
         )}
 
-        {!user && communities.length > 0 && (
-          <div className="mt-6 rounded-2xl border border-dashed border-zinc-300 bg-white p-6 text-center">
-            <p className="text-sm text-zinc-600">
-              برای عضویت در انجمن‌ها و ارسال پست ابتدا وارد حساب کاربری شو.
-            </p>
-            <div className="mt-4 flex justify-center gap-3">
-              <Link
-                href="/login"
-                className="rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium transition hover:bg-zinc-50"
-              >
-                ورود
-              </Link>
-              <Link
-                href="/register"
-                className="rounded-full bg-orange-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-orange-600"
-              >
-                ثبت نام
-              </Link>
-            </div>
-          </div>
-        )}
       </main>
     </div>
   );

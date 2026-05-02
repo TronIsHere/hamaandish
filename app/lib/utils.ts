@@ -1,3 +1,8 @@
+/** Escapes a string for safe use inside a MongoDB `$regex` pattern. */
+export function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 const avatarColors = [
   "bg-violet-500",
   "bg-blue-500",

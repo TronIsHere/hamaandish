@@ -11,8 +11,9 @@ export default function RegisterPage() {
           <aside className="order-2 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm sm:p-8 lg:order-1">
             <h2 className="text-xl font-bold">چرا عضویت در هم‌اندیش؟</h2>
             <p className="mt-3 text-sm text-zinc-600">
-              با ساخت حساب می‌تونی بحث‌های دلخواهت را دنبال کنی، پست منتشر کنی و شبکه
-              حرفه‌ای خودت را بسازی.
+              با ساخت حساب می‌تونی بحث‌های دلخواهت را دنبال کنی، پست منتشر کنی و
+              شبکه حرفه‌ای خودت را بسازی؛ ما بر حریم خصوصی و امنیت داده‌ها تمرکز
+              داریم و از کاربران محافظت می‌کنیم.
             </p>
             <div className="mt-6 space-y-3">
               <div className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3">
@@ -33,6 +34,14 @@ export default function RegisterPage() {
                   رای بده، نظر بده و گفت‌وگو را پیش ببر.
                 </p>
               </div>
+              <div className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3">
+                <p className="text-sm font-semibold">حریم خصوصی و داده‌ها</p>
+                <p className="mt-1 text-xs text-zinc-600">
+                  تمرکز ما بر محافظت از حریم خصوصی و داده‌های کاربران است؛ با
+                  طراحی مسئولانه، از تو در برابر سوءاستفاده از اطلاعات محافظت
+                  می‌کنیم.
+                </p>
+              </div>
             </div>
             <Link
               href="/"
@@ -47,9 +56,12 @@ export default function RegisterPage() {
               <p className="inline-flex rounded-full bg-orange-100 px-3 py-1 text-xs font-semibold text-orange-700">
                 ثبت‌نام در هم‌اندیش
               </p>
-              <h1 className="mt-4 text-2xl font-bold sm:text-3xl">حساب جدید بساز</h1>
+              <h1 className="mt-4 text-2xl font-bold sm:text-3xl">
+                حساب جدید بساز
+              </h1>
               <p className="mt-2 text-sm text-zinc-600">
-                فقط چند قدم تا شروع حضور در جامعه فارسی فاصله داری.
+                حساب‌ها بعد از ثبت‌نام تا تأیید مدیر غیرفعال می‌مانند؛ معمولا
+                تایید بین ۲ تا ۵ ساعت طول میکشه از صبوریتون سپاسگذاریم
               </p>
             </div>
 

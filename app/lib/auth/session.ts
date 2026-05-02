@@ -1,5 +1,6 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
+import { isUserAccountApproved } from "@/app/lib/auth/users";
 import {
   SESSION_COOKIE_NAME,
   SESSION_MAX_AGE_SECONDS,
@@ -21,7 +22,7 @@ export async function createSessionToken(user: SessionUser) {
     .sign(getAuthSecretKey());
 }
 
-export async function getSessionUser(): Promise<SessionUser | null> {
+async function decodeSessionJwt(): Promise<SessionUser | null> {
   const jar = await cookies();
   const token = jar.get(SESSION_COOKIE_NAME)?.value;
   if (!token) return null;
@@ -33,6 +34,19 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     const name = typeof payload.name === "string" ? payload.name : null;
     if (!id || !email || !name) return null;
     return { id, email, name };
+  } catch {
+    return null;
+  }
+}
+
+/** Valid JWT and Mongo user exists with approved account status. Pending users behave as logged out. */
+export async function getSessionUser(): Promise<SessionUser | null> {
+  const jwtUser = await decodeSessionJwt();
+  if (!jwtUser) return null;
+  try {
+    const ok = await isUserAccountApproved(jwtUser.id);
+    if (!ok) return null;
+    return jwtUser;
   } catch {
     return null;
   }

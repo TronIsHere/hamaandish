@@ -105,3 +105,30 @@ body {
   margin-top: 0.75rem;
   margin-bottom: 0.75rem;
 }
+
+.post-editor pre,
+.post-body pre {
+  direction: ltr;
+  text-align: left;
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
+  padding: 0.875rem 1rem;
+  border-radius: 0.5rem;
+  background: #18181b;
+  color: #e4e4e7;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+.post-editor pre code,
+.post-body pre code {
+  font-family: inherit;
+  font-size: inherit;
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  color: inherit;
+}

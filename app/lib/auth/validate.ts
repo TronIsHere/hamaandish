@@ -25,3 +25,17 @@ export function validateDisplayName(name: string): string | null {
   }
   return null;
 }
+
+/** Free-form text from the inviter (stored as-is aside from trim). */
+const REFERRER_MAX = 500;
+
+export function validateReferrerId(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return "ایدی معرف را وارد کن.";
+  }
+  if (trimmed.length > REFERRER_MAX) {
+    return "ایدی معرف خیلی بلند است.";
+  }
+  return null;
+}

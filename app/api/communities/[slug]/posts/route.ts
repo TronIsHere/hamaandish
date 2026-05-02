@@ -2,9 +2,86 @@ import { NextResponse } from "next/server";
 import { getSessionUser } from "@/app/lib/auth/session";
 import { findCommunityBySlug } from "@/app/lib/db/communities";
 import { isMember } from "@/app/lib/db/memberships";
-import { createPost } from "@/app/lib/db/posts";
+import {
+  createPost,
+  FEED_PAGE_SIZE,
+  getPostsByCommunityPage,
+  parseFeedCursor,
+  type FeedSort,
+} from "@/app/lib/db/posts";
 
 type Params = { slug: string };
+
+function toJsonPost(p: {
+  id: string;
+  communitySlug: string;
+  communityName: string;
+  authorId: string;
+  authorName: string;
+  title: string;
+  body: string;
+  upvotes: number;
+  downvotes: number;
+  commentsCount: number;
+  createdAt: Date;
+}) {
+  return {
+    ...p,
+    createdAt: p.createdAt.toISOString(),
+  };
+}
+
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<Params> },
+) {
+  const user = await getSessionUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { slug } = await params;
+  const community = await findCommunityBySlug(slug);
+  if (!community) {
+    return NextResponse.json({ error: "انجمن پیدا نشد." }, { status: 404 });
+  }
+
+  const { searchParams } = new URL(request.url);
+  const sort: FeedSort =
+    searchParams.get("sort")?.toLowerCase() === "hot" ? "hot" : "new";
+  const cursorParam = searchParams.get("cursor");
+  const offsetRaw = searchParams.get("offset");
+  const hotOffset = offsetRaw ? Math.max(0, parseInt(offsetRaw, 10) || 0) : 0;
+
+  const parsedCursor =
+    cursorParam && sort === "new" ? parseFeedCursor(cursorParam) : null;
+  if (cursorParam && sort === "new" && !parsedCursor) {
+    return NextResponse.json({ error: "Invalid cursor" }, { status: 400 });
+  }
+
+  try {
+    const page = await getPostsByCommunityPage({
+      communitySlug: slug,
+      sort,
+      limit: FEED_PAGE_SIZE,
+      cursor: parsedCursor,
+      hotOffset: sort === "hot" ? hotOffset : 0,
+    });
+
+    return NextResponse.json({
+      posts: page.posts.map(toJsonPost),
+      hasMore: page.hasMore,
+      nextCursor: page.nextCursor,
+      nextHotOffset: page.nextHotOffset,
+    });
+  } catch (err) {
+    console.error(err);
+    return NextResponse.json(
+      { error: "مشکلی پیش آمد." },
+      { status: 500 },
+    );
+  }
+}
 
 export async function POST(
   request: Request,

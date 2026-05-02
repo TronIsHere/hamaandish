@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 
 const inputClass =
@@ -9,6 +9,7 @@ const inputClass =
 
 export function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -16,9 +17,9 @@ export function LoginForm() {
     e.preventDefault();
     setError(null);
     setPending(true);
-    const form = new FormData(e.currentTarget);
-    const email = String(form.get("email") ?? "");
-    const password = String(form.get("password") ?? "");
+    const formData = new FormData(e.currentTarget);
+    const email = String(formData.get("email") ?? "");
+    const password = String(formData.get("password") ?? "");
 
     try {
       const res = await fetch("/api/auth/login", {
@@ -31,7 +32,19 @@ export function LoginForm() {
         setError(data.error ?? "ورود انجام نشد.");
         return;
       }
-      router.push("/");
+
+      let nextPath = "/";
+      const rawNext = searchParams.get("next");
+      if (
+        rawNext &&
+        rawNext.startsWith("/") &&
+        !rawNext.startsWith("//") &&
+        !rawNext.includes("\0")
+      ) {
+        nextPath = rawNext;
+      }
+
+      router.push(nextPath);
       router.refresh();
     } catch {
       setError("ارتباط برقرار نشد. دوباره امتحان کن.");

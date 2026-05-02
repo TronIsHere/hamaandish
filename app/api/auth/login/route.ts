@@ -56,6 +56,16 @@ export async function POST(request: Request) {
     );
   }
 
+  if (user.accountStatus === "pending") {
+    return NextResponse.json(
+      {
+        error:
+          "حساب تو هنوز توسط مدیر تأیید نشده. بعداً دوباره وارد شو یا با پشتیبانی تماس بگیر.",
+      },
+      { status: 403 },
+    );
+  }
+
   const token = await createSessionToken({
     id: user.id,
     email: user.email,

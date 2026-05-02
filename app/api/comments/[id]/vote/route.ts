@@ -3,6 +3,7 @@ import { ObjectId } from "mongodb";
 import { getAppDb } from "@/app/lib/db/client";
 import { toggleCommentVote } from "@/app/lib/db/comment-votes";
 import { getSessionUser } from "@/app/lib/auth/session";
+import { isCommentDeletedByAdmin } from "@/app/lib/db/comments";
 
 type Params = { id: string };
 
@@ -41,6 +42,13 @@ export async function POST(
 
   if (!(await commentPostId(id))) {
     return NextResponse.json({ error: "دیدگاه پیدا نشد." }, { status: 404 });
+  }
+
+  if (await isCommentDeletedByAdmin(id)) {
+    return NextResponse.json(
+      { error: "این دیدگاه توسط مدیر حذف شده است." },
+      { status: 410 },
+    );
   }
 
   try {

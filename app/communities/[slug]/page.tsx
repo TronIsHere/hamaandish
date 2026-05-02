@@ -1,22 +1,33 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
-import { FaArrowDown, FaArrowUp, FaCommentDots, FaFire } from "react-icons/fa6";
+import { notFound, redirect } from "next/navigation";
+import { FaFire } from "react-icons/fa6";
 import { SiteHeader } from "@/app/components/site-header";
 import { JoinButton } from "@/app/components/community/join-button";
 import { CreatePostForm } from "@/app/components/community/create-post-form";
 import { DeleteCommunityButton } from "@/app/components/community/delete-community-button";
+import { CommunityInviteLink } from "@/app/components/community/community-invite-link";
+import { CommunityPaginatedPostFeed } from "@/app/components/post/paginated-post-feed";
 import { findCommunityBySlug } from "@/app/lib/db/communities";
-import { getPostsByCommunity } from "@/app/lib/db/posts";
+import {
+  countPostsByCommunity,
+  FEED_PAGE_SIZE,
+  getPostsByCommunityPage,
+} from "@/app/lib/db/posts";
 import { isMember } from "@/app/lib/db/memberships";
 import { getSessionUser } from "@/app/lib/auth/session";
-import { formatRelativeTime, estimateReadTime, getAvatarColor, getInitials } from "@/app/lib/utils";
+import { isAdminEmail } from "@/app/lib/auth/admin";
+import { getSiteOrigin } from "@/app/lib/request-origin";
 
 type Params = { slug: string };
-type PageProps = { params: Promise<Params> };
+type PageProps = {
+  params: Promise<Params>;
+  searchParams?: Promise<{ sort?: string }>;
+};
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { slug } = await params;
+  const [{ slug }, user] = await Promise.all([params, getSessionUser()]);
+  if (!user) return { title: "هم‌اندیش" };
   const community = await findCommunityBySlug(slug);
   if (!community) return { title: "انجمن پیدا نشد" };
   return {
@@ -29,22 +40,51 @@ function toPersian(n: number): string {
   return String(n).replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[+d]!);
 }
 
-export default async function CommunityPage({ params }: PageProps) {
-  const { slug } = await params;
+function parseCommunitySort(raw: string | undefined): "new" | "hot" {
+  return raw?.toLowerCase() === "hot" ? "hot" : "new";
+}
 
-  const [community, user] = await Promise.all([
-    findCommunityBySlug(slug),
-    getSessionUser(),
-  ]);
+export default async function CommunityPage({ params, searchParams }: PageProps) {
+  const { slug } = await params;
+  const user = await getSessionUser();
+  if (!user) {
+    redirect(
+      "/login?next=" + encodeURIComponent(`/communities/${slug}`),
+    );
+  }
+
+  const sp = (await searchParams) ?? {};
+  const sort = parseCommunitySort(
+    typeof sp.sort === "string" ? sp.sort : undefined,
+  );
+
+  const community = await findCommunityBySlug(slug);
 
   if (!community) notFound();
 
-  const [posts, joined] = await Promise.all([
-    getPostsByCommunity(slug),
-    user ? isMember(user.id, slug) : Promise.resolve(false),
+  const [feedPage, postCount, joined] = await Promise.all([
+    getPostsByCommunityPage({
+      communitySlug: slug,
+      sort,
+      limit: FEED_PAGE_SIZE,
+    }),
+    countPostsByCommunity(slug),
+    isMember(user.id, slug),
   ]);
 
-  const isOwner = user?.id === community.ownerUserId;
+  const postsJson = feedPage.posts.map((p) => ({
+    ...p,
+    createdAt: p.createdAt.toISOString(),
+  }));
+
+  const isOwner = user.id === community.ownerUserId;
+  const showAdminFeedDelete = isAdminEmail(user.email);
+
+  const origin = await getSiteOrigin();
+  const inviteUrl =
+    origin !== ""
+      ? `${origin}/communities/${slug}`
+      : `/communities/${slug}`;
 
   return (
     <div className="min-h-screen bg-zinc-100 text-zinc-900">
@@ -75,24 +115,15 @@ export default async function CommunityPage({ params }: PageProps) {
                 <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-white/70">
                   <span>{toPersian(community.memberCount)} عضو</span>
                   <span>·</span>
-                  <span>{toPersian(posts.length)} پست</span>
+                  <span>{toPersian(postCount)} پست</span>
                 </div>
               </div>
               <div className="shrink-0">
-                {user ? (
-                  <JoinButton
-                    slug={slug}
-                    initialJoined={joined}
-                    isOwner={isOwner}
-                  />
-                ) : (
-                  <Link
-                    href="/login"
-                    className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-orange-600 transition hover:bg-orange-50"
-                  >
-                    ورود برای عضویت
-                  </Link>
-                )}
+                <JoinButton
+                  slug={slug}
+                  initialJoined={joined}
+                  isOwner={isOwner}
+                />
               </div>
             </div>
           </div>
@@ -115,21 +146,10 @@ export default async function CommunityPage({ params }: PageProps) {
                     می‌خواهی پست بگذاری؟
                   </h2>
                   <p className="mt-1 text-sm text-zinc-500">
-                    {user
-                      ? "برای انتشار پست، ابتدا عضو این انجمن شو."
-                      : "برای انتشار پست، ابتدا وارد حساب کاربری شو."}
+                    برای انتشار پست، ابتدا عضو این انجمن شو.
                   </p>
                 </div>
-                {user ? (
-                  <JoinButton slug={slug} initialJoined={false} isOwner={false} />
-                ) : (
-                  <Link
-                    href="/login"
-                    className="shrink-0 rounded-full bg-orange-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-orange-600"
-                  >
-                    ورود
-                  </Link>
-                )}
+                <JoinButton slug={slug} initialJoined={false} isOwner={false} />
               </section>
             )}
 
@@ -139,18 +159,26 @@ export default async function CommunityPage({ params }: PageProps) {
                 پست‌های این انجمن
               </h2>
               <div className="flex items-center gap-1.5 text-xs">
-                <button className="rounded-full bg-zinc-900 px-3 py-1.5 font-semibold text-white">
+                <Link
+                  href={`/communities/${slug}`}
+                  className={`rounded-full px-3 py-1.5 transition ${sort === "new" ? "bg-zinc-900 font-semibold text-white" : "bg-zinc-100 font-medium text-zinc-800 hover:bg-zinc-200"}`}
+                >
                   جدیدترین
-                </button>
-                <button className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-3 py-1.5 font-medium transition hover:bg-zinc-200">
-                  <FaFire className="size-3 text-orange-500" />
+                </Link>
+                <Link
+                  href={`/communities/${slug}?sort=hot`}
+                  className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 transition ${sort === "hot" ? "bg-zinc-900 font-semibold text-white" : "bg-zinc-100 font-medium text-zinc-800 hover:bg-zinc-200"}`}
+                >
+                  <FaFire
+                    className={`size-3 ${sort === "hot" ? "text-orange-400" : "text-orange-500"}`}
+                  />
                   داغ‌ترین
-                </button>
+                </Link>
               </div>
             </div>
 
             {/* Posts */}
-            {posts.length === 0 ? (
+            {postCount === 0 ? (
               <div className="rounded-xl border border-zinc-200 bg-white p-8 text-center">
                 <p className="text-zinc-500">
                   هنوز پستی در این انجمن منتشر نشده است.
@@ -162,53 +190,16 @@ export default async function CommunityPage({ params }: PageProps) {
                 )}
               </div>
             ) : (
-              posts.map((post) => (
-                <article
-                  key={post.id}
-                  className="rounded-xl border border-zinc-200 bg-white p-4 transition hover:border-zinc-300 hover:shadow-sm"
-                >
-                  <div className="mb-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-500">
-                    <span
-                      className={`inline-flex size-5 items-center justify-center rounded-full text-[10px] font-bold text-white ${getAvatarColor(post.authorName)}`}
-                    >
-                      {getInitials(post.authorName)}
-                    </span>
-                    <span>{post.authorName}</span>
-                    <span className="text-zinc-300">·</span>
-                    <span>{formatRelativeTime(post.createdAt)}</span>
-                    <span className="text-zinc-300">·</span>
-                    <span>{estimateReadTime(post.body)}</span>
-                  </div>
-
-                  <Link href={`/posts/${post.id}`} className="block">
-                    <h3 className="text-base font-bold leading-snug text-zinc-900 hover:text-orange-600">
-                      {post.title}
-                    </h3>
-                  </Link>
-
-                  <p className="mt-2 line-clamp-2 text-sm leading-6 text-zinc-500">
-                    {post.body.replace(/<[^>]*>/g, " ").trim()}
-                  </p>
-
-                  <div className="mt-3.5 flex flex-wrap items-center gap-2">
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-zinc-100 px-3 py-1.5 text-sm font-medium">
-                      <FaArrowUp className="size-3" />
-                      {toPersian(post.upvotes)}
-                    </span>
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-zinc-100 px-3 py-1.5 text-sm font-medium">
-                      <FaArrowDown className="size-3" />
-                      {toPersian(post.downvotes)}
-                    </span>
-                    <Link
-                      href={`/posts/${post.id}`}
-                      className="inline-flex items-center gap-1.5 rounded-full bg-zinc-100 px-3 py-1.5 text-sm font-medium transition hover:bg-zinc-200"
-                    >
-                      <FaCommentDots className="size-3.5" />
-                      {toPersian(post.commentsCount)}
-                    </Link>
-                  </div>
-                </article>
-              ))
+              <CommunityPaginatedPostFeed
+                key={sort}
+                slug={slug}
+                sort={sort}
+                initialPosts={postsJson}
+                initialHasMore={feedPage.hasMore}
+                initialNextCursor={feedPage.nextCursor}
+                initialNextHotOffset={feedPage.nextHotOffset}
+                showAdminDelete={showAdminFeedDelete}
+              />
             )}
           </section>
 
@@ -231,7 +222,7 @@ export default async function CommunityPage({ params }: PageProps) {
                 <div className="flex items-center justify-between">
                   <span className="text-zinc-500">پست‌ها</span>
                   <span className="font-medium text-zinc-800">
-                    {toPersian(posts.length)}
+                    {toPersian(postCount)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
@@ -250,6 +241,20 @@ export default async function CommunityPage({ params }: PageProps) {
                   communityName={community.name}
                 />
               )}
+            </section>
+
+            <section className="rounded-xl border border-zinc-200 bg-white p-4">
+              <h3 className="text-sm font-semibold text-zinc-800">
+                لینک دعوت
+              </h3>
+              <p className="mt-1 text-xs leading-relaxed text-zinc-500">
+                این آدرس را برای دوستان بفرست تا مستقیم به همین انجمن بیایند و در
+                صورت تمایل عضو شوند.
+              </p>
+              <CommunityInviteLink
+                inviteUrl={inviteUrl}
+                communityName={community.name}
+              />
             </section>
 
             <section className="rounded-xl border border-zinc-200 bg-white p-4">

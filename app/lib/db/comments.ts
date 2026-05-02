@@ -13,6 +13,8 @@ type CommentDoc = {
   upvotes: number;
   downvotes: number;
   createdAt: Date;
+  /** When true, body is cleared and UI shows a moderation placeholder. */
+  deletedByAdmin?: boolean;
 };
 
 export type PublicComment = {
@@ -25,6 +27,7 @@ export type PublicComment = {
   upvotes: number;
   downvotes: number;
   createdAt: Date;
+  deletedByAdmin: boolean;
 };
 
 export type CommentTreeNode = PublicComment & {
@@ -40,6 +43,7 @@ async function getCol() {
 }
 
 function docToPublic(doc: CommentDoc): PublicComment {
+  const deleted = doc.deletedByAdmin === true;
   return {
     id: doc._id.toHexString(),
     postId: doc.postId,
@@ -49,10 +53,11 @@ function docToPublic(doc: CommentDoc): PublicComment {
         : null,
     authorId: doc.authorId,
     authorName: doc.authorName,
-    body: doc.body,
+    body: deleted ? "" : doc.body,
     upvotes: doc.upvotes,
     downvotes: doc.downvotes,
     createdAt: doc.createdAt,
+    deletedByAdmin: deleted,
   };
 }
 
@@ -93,6 +98,38 @@ export async function listCommentsByPost(postId: string): Promise<PublicComment[
     .limit(500)
     .toArray();
   return docs.map(docToPublic);
+}
+
+export async function isCommentDeletedByAdmin(
+  commentIdHex: string,
+): Promise<boolean> {
+  if (!ObjectId.isValid(commentIdHex)) return false;
+  const col = await getCol();
+  const doc = await col.findOne(
+    { _id: new ObjectId(commentIdHex) },
+    { projection: { deletedByAdmin: 1 } },
+  );
+  return doc?.deletedByAdmin === true;
+}
+
+/** Clears body and marks the comment as removed by a moderator; keeps the row (and replies). */
+export async function softDeleteCommentByAdmin(
+  commentIdHex: string,
+): Promise<boolean> {
+  if (!ObjectId.isValid(commentIdHex)) return false;
+  const col = await getCol();
+  const oid = new ObjectId(commentIdHex);
+  const existing = await col.findOne(
+    { _id: oid },
+    { projection: { deletedByAdmin: 1 } },
+  );
+  if (!existing) return false;
+  if (existing.deletedByAdmin === true) return true;
+  await col.updateOne(
+    { _id: oid },
+    { $set: { deletedByAdmin: true, body: "" } },
+  );
+  return true;
 }
 
 export async function createComment(input: {

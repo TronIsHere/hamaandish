@@ -1,7 +1,18 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { FaHandPaper } from "react-icons/fa";
 import { LoginForm } from "@/app/components/auth/login-form";
 import { SiteHeader } from "@/app/components/site-header";
+
+function LoginSectionFallback() {
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-zinc-500">بارگذاری فرم ورود…</p>
+      <div className="h-10 w-full animate-pulse rounded-xl bg-zinc-100" />
+      <div className="h-10 w-full animate-pulse rounded-xl bg-zinc-100" />
+    </div>
+  );
+}
 
 export default function LoginPage() {
   return (
@@ -23,7 +34,9 @@ export default function LoginPage() {
               </p>
             </div>
 
-            <LoginForm />
+            <Suspense fallback={<LoginSectionFallback />}>
+              <LoginForm />
+            </Suspense>
           </section>
 
           <aside className="rounded-2xl border border-zinc-200 bg-linear-to-b from-orange-500 to-orange-600 p-6 text-white shadow-sm sm:p-8">

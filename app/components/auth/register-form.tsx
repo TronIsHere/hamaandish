@@ -11,14 +11,18 @@ export function RegisterForm() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [successPending, setSuccessPending] = useState(false);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    const formEl = e.currentTarget;
     setError(null);
+    setSuccessPending(false);
     setPending(true);
-    const form = new FormData(e.currentTarget);
+    const form = new FormData(formEl);
     const name = String(form.get("name") ?? "");
     const email = String(form.get("email") ?? "");
+    const referrerUserId = String(form.get("referrerUserId") ?? "");
     const password = String(form.get("password") ?? "");
     const confirmPassword = String(form.get("confirmPassword") ?? "");
     const acceptTerms = form.get("acceptTerms") === "on";
@@ -30,14 +34,25 @@ export function RegisterForm() {
         body: JSON.stringify({
           name,
           email,
+          referrerUserId,
           password,
           confirmPassword,
           acceptTerms,
         }),
       });
-      const data = (await res.json()) as { ok?: boolean; error?: string };
+      const data = (await res.json()) as {
+        ok?: boolean;
+        pendingApproval?: boolean;
+        error?: string;
+      };
       if (!res.ok) {
         setError(data.error ?? "ثبت‌نام انجام نشد.");
+        return;
+      }
+      if (data.pendingApproval) {
+        setSuccessPending(true);
+        formEl.reset();
+        window.scrollTo({ top: 0, behavior: "smooth" });
         return;
       }
       router.push("/");
@@ -51,6 +66,16 @@ export function RegisterForm() {
 
   return (
     <form className="space-y-4" onSubmit={handleSubmit}>
+      {successPending && (
+        <p
+          className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900"
+          role="status"
+        >
+          ثبت‌نام ثبت شد. حساب تا وقتی مدیر تأیید کند غیرفعال است؛ بعداً با همان
+          ایمیل و رمز وارد شو.
+        </p>
+      )}
+
       {error && (
         <p
           className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
@@ -91,9 +116,35 @@ export function RegisterForm() {
         />
       </div>
 
+      <div className="space-y-2">
+        <label
+          htmlFor="referrerUserId"
+          className="text-sm font-medium text-zinc-700"
+        >
+          معرف
+        </label>
+        <input
+          id="referrerUserId"
+          name="referrerUserId"
+          type="text"
+          autoComplete="off"
+          required
+          maxLength={500}
+          placeholder=""
+          className={inputClass}
+        />
+        <p className="text-xs text-zinc-500">
+          هر متنی که از طرف معرف برای ثبت‌نام از تو خواسته شده را اینجا بنویس.
+          یا خالی بذار
+        </p>
+      </div>
+
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
-          <label htmlFor="password" className="text-sm font-medium text-zinc-700">
+          <label
+            htmlFor="password"
+            className="text-sm font-medium text-zinc-700"
+          >
             رمز عبور
           </label>
           <input
@@ -150,7 +201,10 @@ export function RegisterForm() {
 
       <p className="mt-6 text-center text-sm text-zinc-600">
         قبلا عضو شدی؟{" "}
-        <Link href="/login" className="font-semibold text-orange-600 hover:text-orange-700">
+        <Link
+          href="/login"
+          className="font-semibold text-orange-600 hover:text-orange-700"
+        >
           وارد شو
         </Link>
       </p>

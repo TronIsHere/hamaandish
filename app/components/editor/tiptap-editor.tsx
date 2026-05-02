@@ -7,6 +7,7 @@ import { EditorContent, useEditor } from "@tiptap/react";
 import { useRef } from "react";
 import {
   FaBold,
+  FaCode,
   FaItalic,
   FaListUl,
   FaListOl,
@@ -58,7 +59,7 @@ export function TiptapEditor({ value, onChange, placeholder }: Props) {
         bold: {},
         italic: {},
         blockquote: false,
-        codeBlock: false,
+        codeBlock: {},
         code: false,
         horizontalRule: false,
       }),
@@ -168,6 +169,16 @@ export function TiptapEditor({ value, onChange, placeholder }: Props) {
           onClick={() => editor.chain().focus().toggleOrderedList().run()}
         >
           <FaListOl className="size-3.5" />
+        </ToolbarButton>
+
+        <div className="mx-1 h-5 w-px bg-zinc-200" />
+
+        <ToolbarButton
+          title="بلوک کد"
+          active={editor.isActive("codeBlock")}
+          onClick={() => editor.chain().focus().toggleCodeBlock().run()}
+        >
+          <FaCode className="size-3.5" />
         </ToolbarButton>
 
         <div className="mx-1 h-5 w-px bg-zinc-200" />

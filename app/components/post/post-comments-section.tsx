@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { FaArrowDown, FaArrowUp } from "react-icons/fa6";
 import { formatRelativeTime } from "@/app/lib/utils";
+import { COMMENT_DELETED_BY_ADMIN_PLACEHOLDER } from "@/app/lib/comment-display";
+import { AdminSoftDeleteCommentButton } from "@/app/components/admin/delete-comment-button";
 
 function toPersian(n: number): string {
   return String(n).replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[+d]!);
@@ -19,6 +21,7 @@ export type SerializedCommentNode = {
   upvotes: number;
   downvotes: number;
   userVote: 1 | -1 | null;
+  deletedByAdmin: boolean;
   replies: SerializedCommentNode[];
 };
 
@@ -203,15 +206,18 @@ type ThreadProps = {
   node: SerializedCommentNode;
   postId: string;
   isLoggedIn: boolean;
+  isAdmin: boolean;
 };
 
 function CommentThread({
   node: n,
   postId,
   isLoggedIn,
+  isAdmin,
 }: ThreadProps) {
   const router = useRouter();
   const [replyOpen, setReplyOpen] = useState(false);
+  const removed = n.deletedByAdmin;
 
   return (
     <div className="text-start">
@@ -225,36 +231,51 @@ function CommentThread({
           <span className="text-zinc-300">·</span>
           <span>{formatRelativeTime(new Date(n.createdAt))}</span>
         </div>
-        <p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-zinc-700">{n.body}</p>
+        <p
+          className={`mt-2 whitespace-pre-wrap text-sm leading-7 ${removed ? "italic text-zinc-400" : "text-zinc-700"}`}
+        >
+          {removed ? COMMENT_DELETED_BY_ADMIN_PLACEHOLDER : n.body}
+        </p>
 
         <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-zinc-100 pt-3">
-          <CommentVoteRow
-            commentId={n.id}
-            upvotes={n.upvotes}
-            downvotes={n.downvotes}
-            userVote={n.userVote}
-            isLoggedIn={isLoggedIn}
-          />
-          {isLoggedIn ? (
-            <button
-              type="button"
-              onClick={() => setReplyOpen((v) => !v)}
-              className="rounded-full px-3 py-1 text-xs font-semibold text-orange-600 ring-1 ring-orange-200 transition hover:bg-orange-50 aria-pressed:ring-orange-400"
-              aria-pressed={replyOpen}
-            >
-              {replyOpen ? "بستن پاسخ" : "پاسخ"}
-            </button>
-          ) : (
-            <Link
-              href="/login"
-              className="text-xs font-semibold text-orange-600 hover:underline"
-            >
-              پاسخ (ورود)
-            </Link>
+          {!removed && (
+            <>
+              <CommentVoteRow
+                commentId={n.id}
+                upvotes={n.upvotes}
+                downvotes={n.downvotes}
+                userVote={n.userVote}
+                isLoggedIn={isLoggedIn}
+              />
+              {isLoggedIn ? (
+                <button
+                  type="button"
+                  onClick={() => setReplyOpen((v) => !v)}
+                  className="rounded-full px-3 py-1 text-xs font-semibold text-orange-600 ring-1 ring-orange-200 transition hover:bg-orange-50 aria-pressed:ring-orange-400"
+                  aria-pressed={replyOpen}
+                >
+                  {replyOpen ? "بستن پاسخ" : "پاسخ"}
+                </button>
+              ) : (
+                <Link
+                  href="/login"
+                  className="text-xs font-semibold text-orange-600 hover:underline"
+                >
+                  پاسخ (ورود)
+                </Link>
+              )}
+            </>
+          )}
+          {isAdmin && (
+            <AdminSoftDeleteCommentButton
+              commentId={n.id}
+              deleted={removed}
+              onModerated={() => router.refresh()}
+            />
           )}
         </div>
 
-        {replyOpen && isLoggedIn && (
+        {!removed && replyOpen && isLoggedIn && (
           <ReplyComposer
             postId={postId}
             parentId={n.id}
@@ -271,10 +292,11 @@ function CommentThread({
         <div className="ms-4 mt-3 space-y-3 border-s border-zinc-200 ps-4">
           {n.replies.map((child) => (
             <CommentThread
-              key={`${child.id}-${child.upvotes}-${child.downvotes}-${child.userVote ?? "none"}`}
+              key={`${child.id}-${child.upvotes}-${child.downvotes}-${child.userVote ?? "none"}-${child.deletedByAdmin}`}
               node={child}
               postId={postId}
               isLoggedIn={isLoggedIn}
+              isAdmin={isAdmin}
             />
           ))}
         </div>
@@ -287,12 +309,14 @@ type SectionProps = {
   postId: string;
   initialCommentTree: SerializedCommentNode[];
   isLoggedIn: boolean;
+  isAdmin: boolean;
 };
 
 export function PostCommentsSection({
   postId,
   initialCommentTree,
   isLoggedIn,
+  isAdmin,
 }: SectionProps) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -382,7 +406,7 @@ export function PostCommentsSection({
         )}
       </section>
 
-      <section className="mt-3 space-y-3">
+      <section id="comments" className="mt-3 space-y-3">
         <div className="flex flex-wrap items-baseline justify-between gap-2 px-1">
           <h3 className="text-sm font-semibold text-zinc-800">دیدگاه‌ها</h3>
           {!isLoggedIn && (
@@ -402,10 +426,11 @@ export function PostCommentsSection({
         ) : (
           initialCommentTree.map((c) => (
             <CommentThread
-              key={`${c.id}-${c.upvotes}-${c.downvotes}-${c.userVote ?? "none"}`}
+              key={`${c.id}-${c.upvotes}-${c.downvotes}-${c.userVote ?? "none"}-${c.deletedByAdmin}`}
               node={c}
               postId={postId}
               isLoggedIn={isLoggedIn}
+              isAdmin={isAdmin}
             />
           ))
         )}

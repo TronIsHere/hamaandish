@@ -1,5 +1,6 @@
 import { ObjectId } from "mongodb";
 import { getAppDb } from "@/app/lib/db/client";
+import { escapeRegExp } from "@/app/lib/utils";
 
 type CommunityDoc = {
   _id: ObjectId;
@@ -57,6 +58,29 @@ export async function listCommunities(): Promise<PublicCommunity[]> {
     .find({})
     .sort({ memberCount: -1 })
     .limit(50)
+    .toArray();
+  return docs.map(docToPublic);
+}
+
+export async function searchCommunitiesByText(
+  rawQuery: string,
+  limit = 8,
+): Promise<PublicCommunity[]> {
+  const q = rawQuery.trim();
+  if (q.length < 2) return [];
+
+  const pattern = escapeRegExp(q);
+  const col = await getCol();
+  const docs = await col
+    .find({
+      $or: [
+        { name: { $regex: pattern, $options: "i" } },
+        { slug: { $regex: pattern, $options: "i" } },
+        { description: { $regex: pattern, $options: "i" } },
+      ],
+    })
+    .sort({ memberCount: -1 })
+    .limit(limit)
     .toArray();
   return docs.map(docToPublic);
 }
