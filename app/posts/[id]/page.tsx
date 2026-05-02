@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import {
-  FaArrowDown,
-  FaArrowUp,
-  FaBookmark,
-  FaCommentDots,
-} from "react-icons/fa6";
+import { FaBookmark, FaCommentDots } from "react-icons/fa6";
+import { PostCommentsSection } from "@/app/components/post/post-comments-section";
+import { PostVoteBar } from "@/app/components/post/post-vote-bar";
 import { SiteHeader } from "@/app/components/site-header";
+import { getSessionUser } from "@/app/lib/auth/session";
+import { getUserCommentVotes } from "@/app/lib/db/comment-votes";
+import { listCommentsByPost } from "@/app/lib/db/comments";
+import { isMember } from "@/app/lib/db/memberships";
+import { getUserPostVote } from "@/app/lib/db/post-votes";
 import { getPostById } from "@/app/lib/db/posts";
 import { formatRelativeTime, estimateReadTime } from "@/app/lib/utils";
 
@@ -33,6 +35,28 @@ export default async function PostPage({ params }: PageProps) {
   const post = await getPostById(id);
 
   if (!post) notFound();
+
+  const user = await getSessionUser();
+  const [comments, member, userPostVote] = await Promise.all([
+    listCommentsByPost(id),
+    user ? isMember(user.id, post.communitySlug) : Promise.resolve(false),
+    getUserPostVote(user?.id, id),
+  ]);
+  const canEngage = Boolean(user && member);
+  const votesByComment = await getUserCommentVotes(
+    user?.id,
+    comments.map((c) => c.id),
+  );
+
+  const serializedComments = comments.map((c) => ({
+    id: c.id,
+    authorName: c.authorName,
+    body: c.body,
+    createdAt: c.createdAt.toISOString(),
+    upvotes: c.upvotes,
+    downvotes: c.downvotes,
+    userVote: votesByComment[c.id] ?? null,
+  }));
 
   return (
     <div className="min-h-screen bg-zinc-100 text-zinc-900">
@@ -79,48 +103,40 @@ export default async function PostPage({ params }: PageProps) {
             {post.body}
           </p>
 
-          <div className="mt-6 flex flex-wrap items-center gap-2 border-t border-zinc-100 pt-4 text-sm">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-zinc-100 px-3 py-1.5 font-medium">
-              <FaArrowUp className="size-3.5" />
-              {toPersian(post.upvotes)}
-            </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-zinc-100 px-3 py-1.5 font-medium">
-              <FaArrowDown className="size-3.5" />
-              {toPersian(post.downvotes)}
-            </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-zinc-100 px-3 py-1.5 font-medium">
-              <FaCommentDots className="size-3.5" />
-              {toPersian(post.commentsCount)} دیدگاه
-            </span>
-            <button className="inline-flex items-center gap-1.5 rounded-full bg-zinc-100 px-3 py-1.5 font-medium transition hover:bg-zinc-200">
-              <FaBookmark className="size-3.5" />
-              ذخیره
-            </button>
+          <div className="mt-6 space-y-3 border-t border-zinc-100 pt-4 text-sm">
+            <PostVoteBar
+              key={`pv-${post.id}-${post.upvotes}-${post.downvotes}-${userPostVote ?? "none"}`}
+              postId={post.id}
+              communitySlug={post.communitySlug}
+              initialUpvotes={post.upvotes}
+              initialDownvotes={post.downvotes}
+              initialUserVote={userPostVote}
+              canVote={canEngage}
+              isLoggedIn={Boolean(user)}
+            />
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-zinc-100 px-3 py-1.5 font-medium text-zinc-800">
+                <FaCommentDots className="size-3.5" />
+                {toPersian(post.commentsCount)} دیدگاه
+              </span>
+              <button
+                type="button"
+                className="inline-flex items-center gap-1.5 rounded-full bg-zinc-100 px-3 py-1.5 font-medium text-zinc-800 transition hover:bg-zinc-200"
+              >
+                <FaBookmark className="size-3.5" />
+                ذخیره
+              </button>
+            </div>
           </div>
         </article>
 
-        {/* Comment form */}
-        <section className="mt-3 rounded-xl border border-zinc-200 bg-white p-5">
-          <h2 className="text-sm font-semibold text-zinc-800">ارسال دیدگاه</h2>
-          <textarea
-            className="mt-3 min-h-28 w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm leading-7 outline-none ring-orange-500 transition focus:ring-2"
-            placeholder="دیدگاه خودت را بنویس..."
-          />
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-            <p className="text-xs text-zinc-400">
-              محترمانه بنویس و روی ایده نقد کن.
-            </p>
-            <button className="rounded-full bg-orange-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-orange-600">
-              انتشار دیدگاه
-            </button>
-          </div>
-        </section>
-
-        {post.commentsCount === 0 && (
-          <p className="mt-3 px-1 text-sm text-zinc-400">
-            هنوز دیدگاهی ثبت نشده است. اولین نفر باش!
-          </p>
-        )}
+        <PostCommentsSection
+          postId={post.id}
+          communitySlug={post.communitySlug}
+          initialComments={serializedComments}
+          canCommentAndVote={canEngage}
+          isLoggedIn={Boolean(user)}
+        />
       </main>
     </div>
   );
